@@ -9,7 +9,7 @@ class TSP_3D:
 		self.initialPopulation, self.rankList = self.createInitialPopulation(initialPopulationSize)
 		self.bestPath = self.evolve(epochs)
 
-	def readInput(self) -> tuple[int, list[tuple[int, int, int]]]:
+	def readInput(self):
 		cities = []
 		with open('input.txt', 'r') as file:
 			cityCount = int(file.readline().strip())
@@ -19,7 +19,7 @@ class TSP_3D:
 			
 		return (cityCount, cities)
 
-	def createInitialPopulation(self, size: int) -> tuple[list[tuple[int, float]], list[tuple[int, int, int]]]:
+	def createInitialPopulation(self, size):
 		initial_population = []
 		for i in range(size):
 			path = random.sample(self.cities, self.cityCount)
@@ -28,14 +28,14 @@ class TSP_3D:
 		rankList = self.rank(initial_population)
 		return (initial_population, rankList)
 	
-	def rank(self, population: [list[list[tuple[int, int, int]]]]) -> list[tuple[int, float]]:
+	def rank(self, population):
 		rankList = []
 		for i, path in enumerate(population):
 			rankList.append((i, self.distance(path)))
 		rankList.sort(key=lambda rank: rank[1], reverse=True)
 		return rankList		
 
-	def distance(self, path: list[tuple[int, int, int]]) -> float:
+	def distance(self, path):
 		distance = 0
 		for i in range(len(path) - 1):
 			x, y, z = path[i]
@@ -48,7 +48,7 @@ class TSP_3D:
 
 		return 1/distance
 
-	def createMatingPool(self, population: list[tuple[int, int, int]], rankList: list[tuple[int, int]], numParents = 2) -> list:
+	def createMatingPool(self, population, rankList, numParents = 2):
 		matingPool = []
 
 		for i in range(numParents):
