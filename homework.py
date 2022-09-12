@@ -97,7 +97,8 @@ class TSP_3D:
 		p1, p2 = parents[0], parents[1]
 		child = p2[0:start] + p1[start:end+1] + p2[end+1:]
 
-		if (missing := set(p1).difference(set(child))):
+		missing = set(p1).difference(set(child))
+		if missing:
 			child = [city if city not in child[:i] else missing.pop() for i, city in enumerate(child)]
 		return child
 	
