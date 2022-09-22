@@ -4,7 +4,7 @@ import math
 import sys
 
 class TSP_3D:
-	def __init__(self, solve=False, initialPopulationSize=2, numParents=2, epochs=400):
+	def __init__(self, solve=False, initialPopulationSize=2, numParents=2, epochs=500):
 		self.distances = dict()
 
 		if solve:
@@ -54,7 +54,8 @@ class TSP_3D:
 		x, y, z = path[-1]
 		x2, y2, z2 = path[0]
 		distance += math.sqrt((x2 - x)**2 + (y2 - y)**2 + (z2 - z)**2)
-		distance = 1/distance
+		if distance > 0:
+			distance = 1/distance
 
 		self.distances[path] = distance
 
@@ -102,16 +103,14 @@ class TSP_3D:
 			parents[0] = self.locallyOptimized(parents[0])
 			parents = self.populationReformulation(parents)
 			children = self.crossover(parents)
-
 			for i, child in enumerate(children):
 				newChild = self.rearrangement(child)
 				if newChild != child:
 					children[i] = newChild
-
 			
 			for parent in parents:
-				children += self.multiMutate(parent)
-			
+				children += self.multiMutate(parent)			
+
 			for i, child in enumerate(children):
 				heapq.heappush(newRankList, (-1 * self.distance(child), i))
 			population = children
@@ -152,7 +151,7 @@ class TSP_3D:
 		return newParents
 
 	def rearrangement(self, path):
-		maxDist = [0, None]
+		maxDist = [0, 0]
 		for i in range(len(path)-1):
 			x, y, z = path[i]
 			x2, y2, z2 = path[i+1]	
@@ -166,7 +165,7 @@ class TSP_3D:
 		s2[maxDist[1]], s2[len(path) // 2] = s2[len(path) // 2], s2[maxDist[1]]
 		s3 = path[:]
 		s3[maxDist[1]], s3[len(path)-1] = s3[len(path)-1], s3[maxDist[1]]
-		maxDist = [0, None]
+		maxDist = [-1, None]
 		for S in [path, s1, s2, s3]:
 			dist = self.distance(S)
 			if dist > maxDist[0]:
@@ -269,11 +268,16 @@ class TSP_3D:
 		return mutations
 
 	def locallyOptimized(self, currentPath):
-		subtourLength  = random.randrange(3, len(currentPath)//2)
-		start = random.randrange(0, subtourLength)
+		if len(currentPath) <= 5:
+			subtourLength = len(currentPath[1:len(currentPath)-1])
+		else:
+			subtourLength  = random.randrange(3, len(currentPath)//2)
+		start = random.randrange(0, len(currentPath) - subtourLength)
 		subtour = currentPath[start:start+subtourLength]
+		if len(subtour) <= 1:
+			return currentPath
 		currentEvals = 0
-		maxEvals = 700
+		maxEvals = 1500
 		bestFitness = self.distance(subtour)
 		bestPath = subtour
 		while currentEvals < maxEvals:
@@ -336,6 +340,10 @@ class TSP_3D:
 			
 		return path
 
+sol = TSP_3D(solve=True)
+sol.output()
+
+'''
 from datetime import datetime, timedelta
 iters = 5
 avgTime = timedelta(0)
@@ -360,3 +368,4 @@ print('min path dist', minDist)
 #children = sol.crossover([[1,2,3,4,5,6,7,8,9],[7,4,1,9,2,5,3,6,8]], 3, 5, 4)
 #for child in children:
 #	print(child)
+'''
