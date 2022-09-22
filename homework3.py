@@ -66,27 +66,6 @@ class TSP_3D:
 		for i in range(numParents):
 			fittestIndex = heapq.heappop(rankList)[1]
 			matingPool.append(population[fittestIndex])
-		"""
-		maxFitness = rankList[0][0] * -1 
-		minFitness = max(rankList)[0] * -1
-		if maxFitness != minFitness:
-			# scale the ranklist to improve fitness of top individuals
-			scaledRankList = []
-			for rank in rankList:
-				scaledRank = (-1 * math.e**((-1*rank[0] - minFitness) / (maxFitness - minFitness)), rank[1]) 
-				heapq.heappush(scaledRankList, scaledRank)
-			rankList = scaledRankList
-		S = sum(-1 * rank[0] for rank in rankList)
-		wheelPercents = [((-1 * rank[0])/S, rank[1]) for rank in rankList]
-		for i in range(numParents):
-			s = 0
-			P = random.random()
-			for percent in wheelPercents:
-				s += percent[0]
-				if s > P:
-					matingPool.append(population[percent[1]])
-					break
-		"""
 		return matingPool
 
 	def evolve(self, epochs):
@@ -132,13 +111,6 @@ class TSP_3D:
 		mid = random.randrange(len(parents[0])) if not mid else mid
 		children += self.onePointSwappedInvertedCrossover(parents, mid)
 
-
-		'''
-		child = p2[0:start] + p1[start:end+1] + p2[end+1:]
-		missing = set(p1).difference(set(child))
-		if missing:
-			child = [city if city not in child[:i] else missing.pop() for i, city in enumerate(child)]
-		'''
 		return children
 	
 	def populationReformulation(self, parents):
