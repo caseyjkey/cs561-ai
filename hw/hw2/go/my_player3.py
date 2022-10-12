@@ -1,19 +1,13 @@
-from enum import enum
 import random
 import sys
+import numpy as np
 from read import readInput
 from write import writeOutput
 
 from host import GO
 
-class Piece(Enum):
-    BLACK = 1
-    WHITE = 2
-
-class Reward(Enum):
-    DRAW = 0
-    WIN = 100
-    LOSS = -100
+Piece = { "BLACK": 1, "WHITE": 2 }
+Reward = { "DRAW": 0, "WIN": 100, "LOSS": -100 }
 
 class QPlayer():
     GAME_NUM = 100000
@@ -40,12 +34,16 @@ class QPlayer():
         return self.q_values[state]
     
     def _select_best_move(self, board):
-        state = board.encode_state()
+        print(board)
+        print(type(board))
+        state = [cell for row in board for cell in row]
+        state = frozenset(state)
         q_values = self.Q(state)
         row, col = 0, 0
         curr_max = -np.inf
         while True:
             i, j = self._find_max(q_values)
+            print(i, j)
             if go.valid_place_check(i, j, self.piece_type, test_check = True):
                 return i, j
             else:
@@ -68,7 +66,7 @@ class QPlayer():
         :param go: Go instance.
         :return: (row, column) coordinate of input.
         '''
-        board = go.copy_board()
+        board = go.board
         row, col = self._select_best_move(board)
         self.history_states.append((board, (row, col)))
 
@@ -99,9 +97,9 @@ if __name__ == "__main__":
     piece_type, previous_board, board = readInput(N)
     go = GO(N)
     go.set_board(piece_type, previous_board, board)
-    player = QPlayer()
-    action = player.get_input(go, piece_type)
-    if not go.place_chess(x, y, piece_type):
+    player = QPlayer(piece_type=piece_type)
+    action = player.get_input(go)
+    if not go.place_chess(action[0], action[1], piece_type):
         # Invalid move is immediate loss
         result = Piece.BLACK if piece_type == Piece.WHITE else Piece.WHITE
         player.learn(board, result)
