@@ -32,23 +32,16 @@ class AlphaBetaPlayer():
         :return: (row, column) coordinate of input.
         '''      
         print(f"we are {self.pieceType}")
-        depth = self.maxDepth
-        maxActions = self.maxActions
-        boardOutcomes = self.boardOutcomes(go, 0, [-np.inf], [np.inf])
-        if type(boardOutcomes) is not list:
-            action = boardOutcomes
-        else:
-        # worst = min(boardOutcomes)
-            action = max(boardOutcomes)
-            print(sorted(boardOutcomes))
+        v = self.maxNode(go, 0, [-np.inf], [np.inf])
+        a = v[1]
         print(go.board)
-        print("acts", action)
-        valid = go.valid_place_check(action[1][0], action[1][1], self.startType)
+        print("acts", v)
+        valid = go.valid_place_check(a[0], a[1], self.startType)
         print("valid", valid)
         if not valid:
             return "PASS"
         else:
-            return action[1]
+            return a
 
     def findGroups(self, go):
         # find endangered groups
@@ -73,54 +66,67 @@ class AlphaBetaPlayer():
     # Returns score and action tuple
     # Action should be a coordinate tuple
     # alpha and beta are subscriptable (become tuple or score and point)
-    def maxNode(self, go, action, depth, alpha, beta):
-        goCopy = go.copy_board()
-        goCopy.place_chess(action[0], action[1], self.pieceType)
-        if depth >= self.maxDepth or self.gameOver(goCopy):
-            score = self.score(goCopy)
-            # print("score", score)
-            value = score[self.startType] - score[self.startEnemy]
-            return (value, action)
+    def maxNode(self, go, depth, alpha, beta):
+        if depth >= self.maxDepth or self.gameOver(go):
+            score = self.score(go)
+            print("score", score)
+            v = score[self.startType] - score[self.startEnemy]
+            return [v, None]
         
-        self.pieceType, self.enemy = self.enemy, self.pieceType
-        boardOutcomes = self.boardOutcomes(goCopy, depth + 1, alpha, beta)
-        #print('\nouter result at depth', depth, "is", boardOutcomes)
-        #print('for board', goCopy.board)
-        if type(boardOutcomes) is not list:
-            return boardOutcomes
+        #allV = [[None for i in range(len(go.board))] for j in range(len(go.board))]
+        v = [-np.inf, None]
         
-        # best is min because score = enemy - player
-        best = min(boardOutcomes)
-        worst = max(boardOutcomes)
+        alphaCopy = alpha
+        betaCopy = beta
+        for i in range(len(go.board)):
+            for j in range(len(go.board)):
+                a = (i, j)
+                outcome = self.moveOutcome(go, a, depth, alphaCopy, betaCopy, "min")
+                if outcome[0] > v[0]:
+                    v = outcome
+                    v[1] = a if not v[1] else v[1]
+                #allV[i][j] = v
+                #print("max")
+                #print(go.board)
+                #print(v, depth)
+                if beta[0] <= v[0]:
+                    print(f'PRUNED BETA BECAUSE {beta[0]} >= {v[0]} ')
+                    return v
+                alphaCopy = max(alphaCopy, v)
 
-        return best if not (depth % 2) else worst
+        #allV = [element for row in allV for element in row]        
+        return v #max(allV)
     
-    '''
-    def minNode(self, go, action, depth, alpha, beta):
-        if self.isLeaf()
-        if depth >= self.maxDepth or not actions:
-            return self.scoreHeuristic(go, action, not actions), []
+    def minNode(self, go, depth, alpha, beta):
+        if depth >= self.maxDepth or self.gameOver(go):
+            score = self.score(go)
+            v = score[self.startType] - score[self.startEnemy]
+            return [v, None]
         
-        enemy = 2 if self.pieceType == 1 else 1
+        #allV = [[None for i in range(len(go.board))] for j in range(len(go.board))]
+        v = [np.inf, None]
+        alphaCopy = alpha
+        betaCopy = beta
+        for i in range(len(go.board)):
+            for j in range(len(go.board)):
+                a = (i, j)
+                outcome = self.moveOutcome(go, a, depth, alphaCopy, betaCopy, "max")
+                if outcome[0] < v[0]:
+                    v = outcome
+                    v[1] = a if not v[1] else v[1]
+                #allV[i][j] = v
+                #print("min")
+                #print(go.board)
+                #print(v, depth)
+                if v[0] <= alphaCopy[0]:
+                    print(f'PRUNED ALPHA BECAUSE {alpha[0]} <= {v[0]} ')
+                    return v
+                betaCopy = min(betaCopy, v)
 
-        minValue = np.inf
-        minValueActions = []
-
-        actions = sample(actions, self.maxActions) if len(actions) > self.maxActions else actions
-        for action in actions:
-            goCopy = go.copy_board()
-            valid = goCopy.place_chess(action[0], action[1], enemy)
-            score, actions = self.maxNode(goCopy, action, depth + 1, alpha, beta)
-            minValue = score if score < minValue else minValue
-            minValueActions.insert(0, action)
-
-            if minValue < alpha:
-                return minValue, minValueActions
-            
-            beta = minValue if minValue < beta else beta
-        
-        return minValue, minValueActions
-    '''
+        #allV = [element for row in allV for element in row]        
+        #print("min")
+        #print(allV)
+        return v #min(allV)
 
     # returns a a 2d matrix of outcomes for choosing any point
     # return a point with score if pruning occurs
@@ -132,7 +138,7 @@ class AlphaBetaPlayer():
         for i in range(len(go.board)):
             for j in range(len(go.board)):
                 action = (i, j)
-                outcome = self.moveOutcome(go, action, depth, alphaCopy, betaCopy)
+                outcome = self.moveOutcome(go, action, depth, alphaCopy, betaCopy, "")
                 #print("inner result for", i, j, "is", outcome, 'depth', depth)
                 if outcomes[i][j]:
                     print('ALREADY DEFINED!!!!!!!!!!!!!!!!')
@@ -161,13 +167,20 @@ class AlphaBetaPlayer():
                 
 
     # returns a score as (score, (x, y))
-    def moveOutcome(self, go, action, depth, alpha, beta):
-        if self.isNotLeaf(go, action) and go.valid_place_check(action[0], action[1], self.pieceType):
+    def moveOutcome(self, go, a, depth, alpha, beta, level):
+        player = self.pieceType if level == "min" else self.enemy
+        if self.isNotLeaf(go, a) and go.valid_place_check(a[0], a[1], player):
+            goCopy = go.copy_board()
+            valid = goCopy.place_chess(a[0], a[1], player)
+            #print(a, 'is', valid)
             #print('placing a', self.pieceType, 'at', action, "in depth of", depth)
-            return self.maxNode(go, action, depth, alpha, beta)
+            if level == "max":
+                return self.maxNode(goCopy, depth+1, alpha, beta)
+            else:
+                return self.minNode(goCopy, depth, alpha, beta)
         else:
-            score = -1000 if (depth % 2) else 1000
-            return (score, action)
+            score = -1000 if level == "min" else 1000
+            return [score, a]
 
     def isNotLeaf(self, go, action):
         (i, j) = action
