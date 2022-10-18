@@ -31,14 +31,12 @@ class AlphaBetaPlayer():
         :param pieceType: 1('X')-Black or 2('O')-White.
         :return: (row, column) coordinate of input.
         '''      
-        print(f"we are {self.pieceType}")
         v = self.maxNode(go, 0, [-np.inf], [np.inf])
         a = v[1]
-        print(go.board)
-        print("acts", v)
         valid = go.valid_place_check(a[0], a[1], self.startType)
-        print("valid", valid)
+        print(f"we are {self.pieceType}", "acts", v, "valid", valid)
         if not valid:
+            sys.exit(1)
             return "PASS"
         else:
             return a
@@ -69,7 +67,7 @@ class AlphaBetaPlayer():
     def maxNode(self, go, depth, alpha, beta):
         if depth >= self.maxDepth or self.gameOver(go):
             score = self.score(go)
-            print("score", score)
+            #print("score", score)
             v = score[self.startType] - score[self.startEnemy]
             return [v, None]
         
@@ -90,7 +88,7 @@ class AlphaBetaPlayer():
                 #print(go.board)
                 #print(v, depth)
                 if beta[0] <= v[0]:
-                    print(f'PRUNED BETA BECAUSE {beta[0]} >= {v[0]} ')
+                    #print(f'PRUNED BETA BECAUSE {beta[0]} >= {v[0]} ')
                     return v
                 alphaCopy = max(alphaCopy, v)
 
@@ -119,7 +117,7 @@ class AlphaBetaPlayer():
                 #print(go.board)
                 #print(v, depth)
                 if v[0] <= alphaCopy[0]:
-                    print(f'PRUNED ALPHA BECAUSE {alpha[0]} <= {v[0]} ')
+                    #print(f'PRUNED ALPHA BECAUSE {alpha[0]} <= {v[0]} ')
                     return v
                 betaCopy = min(betaCopy, v)
 
@@ -169,7 +167,7 @@ class AlphaBetaPlayer():
     # returns a score as (score, (x, y))
     def moveOutcome(self, go, a, depth, alpha, beta, level):
         player = self.pieceType if level == "min" else self.enemy
-        if self.isNotLeaf(go, a) and go.valid_place_check(a[0], a[1], player):
+        if self.isValid(go, a, player):
             goCopy = go.copy_board()
             valid = goCopy.place_chess(a[0], a[1], player)
             #print(a, 'is', valid)
@@ -182,11 +180,19 @@ class AlphaBetaPlayer():
             score = -1000 if level == "min" else 1000
             return [score, a]
 
-    def isNotLeaf(self, go, action):
+    def isValid(self, go, action, player):
         (i, j) = action
-        #print(action, not go.board[i][j], not self.hasNoNeighbors(go, i, j), not self.checkPoint(go, i, j), go.valid_place_check(action[0], action[1], self.pieceType))
-        notLeaf = not go.board[i][j] and not self.hasNoNeighbors(go, i, j) and not self.checkPoint(go, i, j)
-        return notLeaf
+        valid = True
+        if go.board[i][j]:
+            valid = False
+        elif self.hasNoNeighbors(go, i, j):
+            valid = False
+        elif self.checkPoint(go, i, j):
+            valid = False
+        elif not go.valid_place_check(i, j, player):
+            valid = False
+        print(action, not go.board[i][j], not self.hasNoNeighbors(go, i, j), not self.checkPoint(go, i, j), go.valid_place_check(action[0], action[1], player))
+        return valid
 
     def gameOver(self, go):
         for i in range(len(go.board)):
