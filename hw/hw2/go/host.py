@@ -209,7 +209,7 @@ class GO:
         board[i][j] = piece_type
         self.update_board(board)
         # Remove the following line for HW2 CS561 S2020
-        self.n_move += 1
+        # self.n_move += 1
         return True
 
     def valid_place_check(self, i, j, piece_type, test_check=False):
@@ -308,11 +308,9 @@ class GO:
 
         # Case 1: max move reached
         if self.n_move >= self.max_move:
-            print("Host: game end because max moves")
             return True
         # Case 2: two players all pass the move.
         if self.compare_board(self.previous_board, self.board) and action == "PASS":
-            print("Host: game ends because both players pass")
             return True
         return False
 

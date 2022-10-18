@@ -64,7 +64,6 @@ play()
 
 		python3 $prefix/host.py -m $moves -v True >&2
 		rst=$?
-        echo $rst
 
 		if [[ "$rst" != "0" ]]; then
 			break
@@ -86,8 +85,6 @@ play()
 		fi
 	done
 
-	echo $rst
-	echo "skrt" 
 	echo $rst
 }
 
