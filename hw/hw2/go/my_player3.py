@@ -79,7 +79,7 @@ class AlphaBetaPlayer():
         if depth >= self.maxDepth or self.gameOver(goCopy):
             score = self.score(goCopy)
             # print("score", score)
-            value = score[self.startEnemy] - score[self.startType]
+            value = score[self.startType] - score[self.startEnemy]
             return (value, action)
         
         self.pieceType, self.enemy = self.enemy, self.pieceType
@@ -134,6 +134,8 @@ class AlphaBetaPlayer():
                 action = (i, j)
                 outcome = self.moveOutcome(go, action, depth, alphaCopy, betaCopy)
                 #print("inner result for", i, j, "is", outcome, 'depth', depth)
+                if outcomes[i][j]:
+                    print('ALREADY DEFINED!!!!!!!!!!!!!!!!')
                 outcomes[i][j] = outcome
                 #print('outcomes', outcomes, '\n')
                 #print('alpha, beta', alphaCopy, betaCopy)
@@ -141,14 +143,14 @@ class AlphaBetaPlayer():
                 isEven = not bool(depth % 2)
                 # These may need switched
                 if isEven:
-                    if beta[0] <= outcome[0]:
+                    if beta[0] >= outcome[0]:
                         print(f'PRUNED BETA BECAUSE {beta[0]} >= {outcome[0]} ')
-                        return beta
+                        return outcome
                     if alphaCopy[0] > outcome[0]:
                         print('alphaCopy now', outcome)
                         alphaCopy = outcome
                 else:
-                    if alpha[0] >= outcome[0]:
+                    if alpha[0] <= outcome[0]:
                         print(f'PRUNED ALPHA BECAUSE {alpha[0]} <= {outcome[0]} ')
                         return outcome
                     if betaCopy[0] < outcome[0]:
@@ -164,7 +166,7 @@ class AlphaBetaPlayer():
             #print('placing a', self.pieceType, 'at', action, "in depth of", depth)
             return self.maxNode(go, action, depth, alpha, beta)
         else:
-            score = -1000 if not (depth % 2) else 1000
+            score = -1000 if (depth % 2) else 1000
             return (score, action)
 
     def isNotLeaf(self, go, action):
@@ -172,20 +174,6 @@ class AlphaBetaPlayer():
         #print(action, not go.board[i][j], not self.hasNoNeighbors(go, i, j), not self.checkPoint(go, i, j), go.valid_place_check(action[0], action[1], self.pieceType))
         notLeaf = not go.board[i][j] and not self.hasNoNeighbors(go, i, j) and not self.checkPoint(go, i, j)
         return notLeaf
-
-    def possibleActions(self, go):
-        board = go.board
-        actions = []
-        for i in range(len(board)):
-            for j in range(len(board)):
-                if not board[i][j] and go.valid_place_check(i, j, self.pieceType, True):
-                    actions.append((i, j))
-        return actions
-
-    def scoreHeuristic(self, go, action, finalAction):
-        if depth >= self.maxDepth or self.gameOver(go):
-            return 
-
 
     def gameOver(self, go):
         for i in range(len(go.board)):
@@ -221,8 +209,6 @@ class AlphaBetaPlayer():
                 elif all(go.board[y][y] == 2 for (x, y) in neighbors):
                     point = 2
         return point
-
-
 
     def hasNoNeighbors(self, go, i, j):
         neighbors = go.detect_neighbor(i, j)
@@ -279,9 +265,6 @@ class AlphaBetaPlayer():
         # return a randomly scaled score
         total = groupScore * uniform(0,1) + libertyScore * uniform(0,1)
         return total
-
-
-        
 
     def findLiberties(self, i, j, color, board):
         neighbors = [(i+1, j), (i-1, j), (i, j+1), (i, j-1)]
