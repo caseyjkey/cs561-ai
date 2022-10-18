@@ -90,8 +90,8 @@ class AlphaBetaPlayer():
             return boardOutcomes
         
         # best is min because score = enemy - player
-        best = max(boardOutcomes)
-        worst = min(boardOutcomes)
+        best = min(boardOutcomes)
+        worst = max(boardOutcomes)
 
         return best if not (depth % 2) else worst
     
