@@ -17,6 +17,7 @@ class AlphaBetaPlayer():
         self.maxDepth = maxDepth
         # Limit the possible actions for each node
         self.maxActions = maxActions
+        self.actions = []
         self.turns = 0
         self.startType = pieceType
         self.startEnemy = 1 if pieceType == 2 else 2
@@ -31,20 +32,128 @@ class AlphaBetaPlayer():
         :param pieceType: 1('X')-Black or 2('O')-White.
         :return: (row, column) coordinate of input.
         '''      
-        v = self.maxNode(go, 0, [-np.inf], [np.inf])
-        a = v[1]
-        valid = go.valid_place_check(a[0], a[1], self.startType)
-        print(f"we are {self.pieceType}", "acts", v, "valid", valid)
-        if not valid:
-            sys.exit(1)
-            return "PASS"
-        else:
-            return a
+        count = int(open('moves.txt', 'r').read().strip())
+        self.turns = count
+        #print('turns', self.turns)
+        with open('moves.txt', 'w') as moves:
+            score = self.score(go)
+            if (not score[1] and not score[2]) or (score[1] == 1 and score[2] == 0):
+                #print('new game')
+                moves.write("0")
+                return [1,1]
+            else:
+                moves.write(str(count + 1))
+
+
+        v = self.maxNode(go, [], (-np.inf, None), (np.inf, None))
+        #print(v)
+        #print("REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE")
+        a = v[1] if v[1] else None
+
+        result = "PASS"
+
+        if a and go.valid_place_check(a[0][0], a[0][1], self.startType):
+            result = a[0]
+            #print(result)
+            go.place_chess(result[0], result[1], self.pieceType)
+        
+        
+        return result
+        
+
+    '''
+    Debug why this returns PASS
+    Black makes move...
+    turns 9
+    (inf, None)
+    PASS
+    ----------
+    X   X X
+    X     X
+    O O O O
+    X   O O
+    X O X X
+    ----------
+    Debug why place X 4,4 instead of 0,4
+    Black makes move...
+    ----------
+    X   X X
+    X O O X 
+    X   X O X
+    X O O O
+    X X O   X
+    ----------
+    '''
+
+    def findActions(self, go, player):
+        if go.game_end(player):
+            #print("game end")
+            return []
+        
+        singleLiberties = {1: set(), 2: set()}
+        for color in self.groups:
+            #print("color", color)
+            for group in self.groups[color]:
+                #print("group", group)
+                liberties = group[1]
+                if len(liberties) == 1:
+                    singleLiberties[color] = singleLiberties[color] | liberties
+        
+        # Offense
+        enemy = 2 if player == 1 else 1
+        if singleLiberties[enemy]:
+            #print("sing enemy")
+            return singleLiberties[enemy]
+
+        actions = []
+        # Defense
+        #print("singles", singleLiberties)
+        if singleLiberties[player]:
+            actions = self.actionsFilter(go, list(singleLiberties[player]), player)
+        if not actions:
+            actions = set()
+            for group in self.groups[enemy]:
+                #print("2nd", group)
+                actions = actions | group[1]
+                #print("3rd", actions)
+            actions = self.actionsFilter(go, list(actions), player)
+        
+        if not actions:
+            for i in range(len(go.board)):
+                for j in range(len(go.board)):
+                    a = [i, j]
+                    if self.isValid(go, a, player):
+                        actions.append(a)
+        
+        return actions
+
+    def actionsFilter(self, go, actions, player):
+        #print("before", actions)
+        for a in list(actions):
+            # Remove unalives and pupils of eyes
+            #print("a", a)
+            if not self.findLiberties(a[0], a[1], go.board):
+                indirectLiberty = False
+                allies = go.detect_neighbor(a[0], a[1])
+                for group in self.groups[player]:
+                    liberties = group[1]
+                    #print()
+                    #print(group)
+                    #print(len(liberties), allies)
+                    #print("libs", liberties)
+                    if len(liberties) > 1 and any(ally in liberties for ally in allies):
+                        #print("yo")
+                        indirectLiberty = True
+                        break
+                if not indirectLiberty:
+                    #print("2222222")
+                    actions.remove(a)
+        return actions
 
     def findGroups(self, go):
         # find endangered groups
         # TODO: each group a dict with liberty count and liberty points
-        # {piece: groups [ (numLiberties, set(libertyPoints))]}
+        # {piece: groups [ (numLiberties, set(libertyPoints), set(groupMembers))]}
         groups = {1: [], 2: []}
         board = go.board
         visited = set()
@@ -54,80 +163,76 @@ class AlphaBetaPlayer():
                     color = board[i][j]
                     libertyPoints = set()
                     allies = go.ally_dfs(i, j)
+                    members = set()
                     for ally in allies:
                         visited.add(ally)
-                        points = self.findLiberties(ally[0], ally[1], color, board)
-                        libertyPoints = libertyPoints | points
-                    groups[color].append((len(libertyPoints), libertyPoints))
+                        members.add(ally)
+                        if color:
+                            points = self.findLiberties(ally[0], ally[1], board)
+                            libertyPoints = libertyPoints | points
+                    groups[color].append((len(libertyPoints), libertyPoints, members))
         return groups
 
     # Returns score and action tuple
     # Action should be a coordinate tuple
     # alpha and beta are subscriptable (become tuple or score and point)
-    def maxNode(self, go, depth, alpha, beta):
-        if depth >= self.maxDepth or self.gameOver(go):
-            score = self.score(go)
-            #print("score", score)
-            v = score[self.startType] - score[self.startEnemy]
-            return [v, None]
+    def maxNode(self, go, actions, alpha, beta):
+        depth = len(actions)
+        gameOver = self.gameOver(go)
+        if depth >= self.maxDepth or gameOver:
+            # score = self.score(go)
+            # v = score[self.startType] - score[self.startEnemy]
+            self.turns = self.turns + depth
+            v = self.heuristic(go, gameOver)
+            return (v, actions)
         
-        #allV = [[None for i in range(len(go.board))] for j in range(len(go.board))]
-        v = [-np.inf, None]
-        
+        v = (-np.inf, None)
         alphaCopy = alpha
         betaCopy = beta
-        for i in range(len(go.board)):
-            for j in range(len(go.board)):
-                a = (i, j)
-                outcome = self.moveOutcome(go, a, depth, alphaCopy, betaCopy, "min")
-                if outcome[0] > v[0]:
-                    v = outcome
-                    v[1] = a if not v[1] else v[1]
-                #allV[i][j] = v
-                #print("max")
-                #print(go.board)
-                #print(v, depth)
-                if beta[0] <= v[0]:
-                    #print(f'PRUNED BETA BECAUSE {beta[0]} >= {v[0]} ')
-                    return v
-                alphaCopy = max(alphaCopy, v)
+        self.groups = self.findGroups(go)
+        validActions = self.findActions(go, self.pieceType)
+        #print("Valids", validActions)
+        #if not validActions:
+            #print("d", depth, actions)
+            #go.visualize_board()
+            #print(self.groups)
+        for a in validActions: 
+            v = max(v, self.moveOutcome(go, actions + [a], alphaCopy, betaCopy, "min"))
+            if beta[0] <= v[0]:
+                return v
+            #print(validActions)
+            #print(alphaCopy, v)
+            alphaCopy = max(alphaCopy, v)
 
-        #allV = [element for row in allV for element in row]        
-        return v #max(allV)
+        return v
     
-    def minNode(self, go, depth, alpha, beta):
-        if depth >= self.maxDepth or self.gameOver(go):
-            score = self.score(go)
-            v = score[self.startType] - score[self.startEnemy]
-            return [v, None]
+    def minNode(self, go, actions, alpha, beta):
+        depth = len(actions)
+        gameOver = self.gameOver(go)
+        if depth >= self.maxDepth or gameOver:
+            # score = self.score(go)
+            # v = score[self.startType] - score[self.startEnemy]
+            self.turns = self.turns + depth
+            v = self.heuristic(go, gameOver)
+            return (v, actions)
         
-        #allV = [[None for i in range(len(go.board))] for j in range(len(go.board))]
-        v = [np.inf, None]
+        v = (np.inf, None)
         alphaCopy = alpha
         betaCopy = beta
-        for i in range(len(go.board)):
-            for j in range(len(go.board)):
-                a = (i, j)
-                outcome = self.moveOutcome(go, a, depth, alphaCopy, betaCopy, "max")
-                if outcome[0] < v[0]:
-                    v = outcome
-                    v[1] = a if not v[1] else v[1]
-                #allV[i][j] = v
-                #print("min")
-                #print(go.board)
-                #print(v, depth)
-                if v[0] <= alphaCopy[0]:
-                    #print(f'PRUNED ALPHA BECAUSE {alpha[0]} <= {v[0]} ')
-                    return v
-                betaCopy = min(betaCopy, v)
+        self.groups = self.findGroups(go)
+        validActions = self.findActions(go, self.enemy)
+        #if not validActions:
+            #print("d", depth, actions)
+            #go.visualize_board()
+            #print(self.groups)
+        for a in validActions:
+            v = min(v, self.moveOutcome(go, actions + [a], alphaCopy, betaCopy, "max"))
+            if v[0] <= alphaCopy[0]:
+                return v
+            betaCopy = min(betaCopy, v)
 
-        #allV = [element for row in allV for element in row]        
-        #print("min")
-        #print(allV)
-        return v #min(allV)
+        return v
 
-    # returns a a 2d matrix of outcomes for choosing any point
-    # return a point with score if pruning occurs
     def boardOutcomes(self, go, depth, alpha, beta):
         # this is a 2d matrix of whole board
         outcomes = [[None for j in range(len(go.board))] for i in range(len(go.board))]
@@ -163,35 +268,34 @@ class AlphaBetaPlayer():
         # Flatten so we can extract min/max value
         return [value for row in outcomes for value in row]
                 
-
     # returns a score as (score, (x, y))
-    def moveOutcome(self, go, a, depth, alpha, beta, level):
+    def moveOutcome(self, go, actions, alpha, beta, level):
         player = self.pieceType if level == "min" else self.enemy
-        if self.isValid(go, a, player):
-            goCopy = go.copy_board()
-            valid = goCopy.place_chess(a[0], a[1], player)
-            #print(a, 'is', valid)
-            #print('placing a', self.pieceType, 'at', action, "in depth of", depth)
-            if level == "max":
-                return self.maxNode(goCopy, depth+1, alpha, beta)
-            else:
-                return self.minNode(goCopy, depth, alpha, beta)
+        a = actions[-1]
+        #if self.isValid(go, a, player):
+        goCopy = go.copy_board()
+        valid = goCopy.place_chess(a[0], a[1], player)
+        goCopy.remove_died_pieces(3 - player)
+        if level == "max":
+            return self.maxNode(goCopy, actions, alpha, beta)
         else:
-            score = -1000 if level == "min" else 1000
-            return [score, a]
+            return self.minNode(goCopy, actions, alpha, beta)
+        #else:
+        #    score = -10000 if level == "min" else 10000
+         #   return (score, actions)
 
     def isValid(self, go, action, player):
         (i, j) = action
         valid = True
         if go.board[i][j]:
             valid = False
-        elif self.hasNoNeighbors(go, i, j):
-            valid = False
+        #elif self.hasNoNeighbors(go, i, j):
+        #    valid = False
         elif self.checkPoint(go, i, j):
             valid = False
         elif not go.valid_place_check(i, j, player):
             valid = False
-        print(action, not go.board[i][j], not self.hasNoNeighbors(go, i, j), not self.checkPoint(go, i, j), go.valid_place_check(action[0], action[1], player))
+        #print(action, not go.board[i][j], not self.hasNoNeighbors(go, i, j), not self.checkPoint(go, i, j), go.valid_place_check(action[0], action[1], player))
         return valid
 
     def gameOver(self, go):
@@ -220,30 +324,28 @@ class AlphaBetaPlayer():
             point = go.board[i][j]
         else:
             neighbors = go.detect_neighbor(i, j)
-            #print((i, j), "neighbors", (i, j) in neighbors) #[go.board[x][y] for (x, y) in neighbors])
             # Neighbors order: top, bottom, left, right
             if not any(go.board[x][y] == 0 for (x, y) in neighbors):
                 if all(go.board[x][y] == 1 for (x, y) in neighbors):
                     point = 1
-                elif all(go.board[y][y] == 2 for (x, y) in neighbors):
+                elif all(go.board[x][y] == 2 for (x, y) in neighbors):
                     point = 2
         return point
 
     def hasNoNeighbors(self, go, i, j):
         neighbors = go.detect_neighbor(i, j)
-        #print('neighbors', [go.board[x][y] for (x,y) in neighbors])
-        #print('neighbors', all(go.board[x][y] == 0 for (x, y) in neighbors))
         return all(go.board[x][y] == 0 for (x, y) in neighbors)
                 
 
-    def probabilityHeuristic(self, go, action, finalAction):
-        stepCost = 4
+    def heuristic(self, go, gameOver):
+        stepCost = 10
         # turns not incrementing correctly
         # TODO: implement using go.board's n_moves property
-        value = 20 # - self.turns
-        if finalAction:
-            winner = go.judge_winner()
-            return value if winner == self.pieceType else -1 * value
+        value = 1000 - self.turns
+        if gameOver:
+            score = self.score(go)
+            v = score[self.startType] - score[self.startEnemy]
+            return value if v >= 0 else -1 * value 
 
         groups = self.findGroups(go)
         
@@ -251,7 +353,7 @@ class AlphaBetaPlayer():
         
         # good chance of winning
         # if there is at least one enemy group with one or less liberties
-        if any(True for group in groups[enemy] if group[0] <= 1):
+        if any(True for group in groups[enemy] if group[0] == 1):
             # print("good chance winning", action, [group for group in groups[enemy] if group[0] <= 1])
             return value - stepCost
         # good chance of losing
@@ -282,10 +384,10 @@ class AlphaBetaPlayer():
         libertyScore = len(enemyLiberties) - len(selfLiberties)
 
         # return a randomly scaled score
-        total = groupScore * uniform(0,1) + libertyScore * uniform(0,1)
+        total = groupScore + libertyScore #* uniform(0,1)
         return total
 
-    def findLiberties(self, i, j, color, board):
+    def findLiberties(self, i, j, board):
         neighbors = [(i+1, j), (i-1, j), (i, j+1), (i, j-1)]
         size = len(board)
         count = 0
@@ -320,8 +422,8 @@ if __name__ == "__main__":
     pieceType, previous_board, board = readInput(N)
     go = GO(N)
     go.set_board(pieceType, previous_board, board)
-    player = AlphaBetaPlayer(pieceType, maxDepth=2, maxActions=5)
+    player = AlphaBetaPlayer(pieceType, maxDepth=15, maxActions=5)
     # cProfile.run('action = player.get_input(go)')
     action = player.get_input(go)
-    print(action)
+    #print(action)
     writeOutput(action)
