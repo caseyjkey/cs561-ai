@@ -12,7 +12,7 @@ from random import sample, uniform
 
 class AlphaBetaPlayer():
     def __init__(self, pieceType, maxDepth=20, maxActions=np.inf):
-        self.type = 'alpha beta'
+        self.type = 'alphaBeta'
         # Depth before using heuristic function
         self.maxDepth = maxDepth
         # Limit the possible actions for each node
@@ -86,7 +86,7 @@ class AlphaBetaPlayer():
     '''
 
     def findActions(self, go, player):
-        if go.game_end(player):
+        if self.gameOver(go):
             #print("game end")
             return []
         
@@ -131,17 +131,22 @@ class AlphaBetaPlayer():
         #print("before", actions)
         for a in list(actions):
             # Remove unalives and pupils of eyes
+            goCopy = go.copy_board()
+            valid = goCopy.place_chess(a[0], a[1], player)
+            goCopy.remove_died_pieces(3 - player)
+            self.groups = self.findGroups(goCopy)
             #print("a", a)
-            if not self.findLiberties(a[0], a[1], go.board):
+            if not self.findLiberties(a[0], a[1], goCopy.board):
                 indirectLiberty = False
                 allies = go.detect_neighbor(a[0], a[1])
                 for group in self.groups[player]:
                     liberties = group[1]
+                    members = group[2]
                     #print()
                     #print(group)
                     #print(len(liberties), allies)
                     #print("libs", liberties)
-                    if len(liberties) > 1 and any(ally in liberties for ally in allies):
+                    if len(liberties) > 1 and any(ally in members for ally in allies):
                         #print("yo")
                         indirectLiberty = True
                         break
@@ -191,6 +196,10 @@ class AlphaBetaPlayer():
         betaCopy = beta
         self.groups = self.findGroups(go)
         validActions = self.findActions(go, self.pieceType)
+        if len(validActions) > self.maxActions:
+            #print(len(validActions))
+            validActions = sample(validActions, self.maxActions)
+            #print(len(validActions))
         #print("Valids", validActions)
         #if not validActions:
             #print("d", depth, actions)
@@ -221,6 +230,10 @@ class AlphaBetaPlayer():
         betaCopy = beta
         self.groups = self.findGroups(go)
         validActions = self.findActions(go, self.enemy)
+        if len(validActions) > self.maxActions:
+            #print(len(validActions))
+            validActions = sample(validActions, self.maxActions)
+            #print(len(validActions))
         #if not validActions:
             #print("d", depth, actions)
             #go.visualize_board()
@@ -422,8 +435,8 @@ if __name__ == "__main__":
     pieceType, previous_board, board = readInput(N)
     go = GO(N)
     go.set_board(pieceType, previous_board, board)
-    player = AlphaBetaPlayer(pieceType, maxDepth=15, maxActions=5)
-    # cProfile.run('action = player.get_input(go)')
+    player = AlphaBetaPlayer(pieceType, maxDepth=5, maxActions=400)
+    #cProfile.run('action = player.get_input(go)')
     action = player.get_input(go)
     #print(action)
     writeOutput(action)
