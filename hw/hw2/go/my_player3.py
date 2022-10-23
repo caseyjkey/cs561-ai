@@ -39,7 +39,7 @@ class AlphaBetaPlayer():
         if (not score[1] and score[2] == go.komi): #or (score[1] == 1 and score[2] == 0):
             #print('new game')
             #moves.write("0")
-            return [2,2]
+            return [2,3]
             #else:
                 #moves.write(str(count + 1))
 
@@ -90,7 +90,6 @@ class AlphaBetaPlayer():
 
         if singleLiberties[enemy]:
             seen = seen | singleLiberties[enemy]
-            return singleLiberties[enemy]
             actions = self.actionsFilter(go, list(singleLiberties[enemy]), player)
             if actions:
                 return actions
