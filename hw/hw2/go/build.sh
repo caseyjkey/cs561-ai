@@ -11,7 +11,7 @@ if [ "$py" == "yes" ]; then
 	cmd="python my_player.py"
 	echo "PY"
 elif [ "$py3" == "yes" ]; then
-    cmd="python3 -m cProfile -s tottime my_player3.py"
+    cmd="python3 my_player3.py -v"
 	echo "PY3"
 elif [ "$cpp" == "yes" ]; then
 	g++ -O2 *.cpp -o exe
@@ -118,6 +118,7 @@ do
             echo Tie.
             let white_tie+=1
         else
+            break
             echo 'White(You) lose.'
         fi
 
@@ -132,6 +133,7 @@ do
             echo Tie.
             let black_tie+=1
         else
+            break
             echo 'Black(You) lose.'
         fi
     done

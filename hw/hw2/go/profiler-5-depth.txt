@@ -2,45 +2,9 @@ Programming language...
 PY3
 
 
-Wed Oct 19 22:53:02 PDT 2022
+Thu Oct 20 22:00:22 PDT 2022
 
 ==Playing with random_player==
-Wed Oct 19 22:53:02 PDT 2022
-=====Round 1=====
-Black:TA White:You
-White(You) win!
+Thu Oct 20 22:00:22 PDT 2022
 =====Round 2=====
 Black:You White:TA
-Black(You) lose.
-=====Round 3=====
-Black:TA White:You
-White(You) win!
-=====Round 4=====
-Black:You White:TA
-Black(You) win!
-=====Round 5=====
-Black:TA White:You
-White(You) lose.
-=====Round 6=====
-Black:You White:TA
-Black(You) win!
-=====Round 7=====
-Black:TA White:You
-White(You) win!
-=====Round 8=====
-Black:You White:TA
-Black(You) win!
-=====Round 9=====
-Black:TA White:You
-White(You) win!
-=====Round 10=====
-Black:You White:TA
-Black(You) win!
-=====Round 11=====
-Black:TA White:You
-White(You) win!
-=====Round 12=====
-Black:You White:TA
-Black(You) win!
-=====Round 13=====
-Black:TA White:You

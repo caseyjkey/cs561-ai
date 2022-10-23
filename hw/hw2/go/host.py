@@ -212,7 +212,7 @@ class GO:
         # self.n_move += 1
         return True
 
-    def valid_place_check(self, i, j, piece_type, test_check=False):
+    def valid_place_check(self, i, j, piece_type, test_check=False, verb=False):
         '''
         Check whether a placement is valid.
 
@@ -223,7 +223,9 @@ class GO:
         :return: boolean indicating whether the placement is valid.
         '''   
         board = self.board
-        verbose = self.verbose
+        verbose = self.verbose or verb
+        #if verbose:
+            #print(i, j, piece_type)
         if test_check:
             verbose = False
 
