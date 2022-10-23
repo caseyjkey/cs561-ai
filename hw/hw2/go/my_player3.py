@@ -34,11 +34,12 @@ class AlphaBetaPlayer():
         self.turns = 0 #count
         #print('turns', self.turns)
         #with open('moves.txt', 'w') as moves:
-            #score = self.score(go)
-            #if (not score[1] and not score[2]) or (score[1] == 1 and score[2] == 0):
-                #print('new game')
-                #moves.write("0")
-                #return [1,1]
+        score = self.score(go)
+        print(score)
+        if (not score[1] and score[2] == go.komi): #or (score[1] == 1 and score[2] == 0):
+            #print('new game')
+            #moves.write("0")
+            return [2,2]
             #else:
                 #moves.write(str(count + 1))
 
@@ -105,7 +106,7 @@ class AlphaBetaPlayer():
         # Defense
         if singleLiberties[player]:
             seen = seen | singleLiberties[player]
-            actions = singleLiberties[player] #self.actionsFilter(go, list(singleLiberties[player]), player)
+            actions = self.actionsFilter(go, list(singleLiberties[player]), player)
         
         if not actions:
             actions = set()
@@ -113,7 +114,6 @@ class AlphaBetaPlayer():
                 actions = actions | group[1]
             #actions -= seen
             seen = seen | actions
-            # this is passing occupied points
             actions = self.actionsFilter(go, list(actions), player)
         
             if not actions:
@@ -123,7 +123,9 @@ class AlphaBetaPlayer():
     def actionsFilter(self, go, actions, player):
         #Prevents snapbacks
         for a in list(actions):
-            goCopy = go.copy_board()
+            board = deepcopy(go.board)
+            goCopy = GO(5)
+            goCopy.board = board
             valid = goCopy.place_chess(a[0], a[1], player)
             if not valid:
                 actions.remove(a)
