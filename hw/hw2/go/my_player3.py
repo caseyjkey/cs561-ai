@@ -51,6 +51,8 @@ class AlphaBetaPlayer():
         if a and go.valid_place_check(a[0][0], a[0][1], self.pieceType):
             result = a[0]
         
+        print(result, v)
+        
         return result
         
     '''
@@ -83,31 +85,39 @@ class AlphaBetaPlayer():
                 if len(liberties) == 1:
                     singleLiberties[enemy] = singleLiberties[enemy] | liberties
         
+        seen = set()
+
         if singleLiberties[enemy]:
+            seen = seen | singleLiberties[enemy]
+            return singleLiberties[enemy]
             actions = self.actionsFilter(go, list(singleLiberties[enemy]), player)
             if actions:
                 return actions
 
 
         for group in self.groups[player]:
-                liberties = group[1]
-                if len(liberties) == 1:
-                    singleLiberties[player] = singleLiberties[player] | liberties
+            liberties = group[1]
+            if len(liberties) == 1:# and liberties not in seen:
+                singleLiberties[player] = singleLiberties[player] | liberties
 
 
         actions = []
         # Defense
         if singleLiberties[player]:
-            actions = self.actionsFilter(go, list(singleLiberties[player]), player)
+            seen = seen | singleLiberties[player]
+            actions = singleLiberties[player] #self.actionsFilter(go, list(singleLiberties[player]), player)
         
         if not actions:
             actions = set()
             for group in self.groups[enemy]:
                 actions = actions | group[1]
+            #actions -= seen
+            seen = seen | actions
+            # this is passing occupied points
             actions = self.actionsFilter(go, list(actions), player)
         
-        if not actions:
-            actions = [[x, y] for x in range(5) for y in range(5) if go.valid_place_check(x, y, player)]
+            if not actions:
+                actions = [[x, y] for x in range(5) for y in range(5) if '(x, y) not in seen' and go.valid_place_check(x, y, player)]
         return actions
 
     def actionsFilter(self, go, actions, player):
@@ -120,19 +130,60 @@ class AlphaBetaPlayer():
                 continue
             goCopy.remove_died_pieces(3 - player)
             self.groups = self.findGroups(goCopy)
+            #print("a", a)
             if len(self.findLiberties(a[0], a[1], goCopy.board)) <= 1:
                 indirectLiberty = False
                 neighbors = goCopy.detect_neighbor(a[0], a[1])
                 for group in self.groups[player]:
                     liberties = group[1]
                     members = group[2]
+                    #print()
+                    #print(group)
+                    #print(len(liberties), allies)
+                    #print("libs", liberties)
                     if len(liberties) > 1 and any(neighbor in members for neighbor in neighbors):
                         #print("yo")
                         indirectLiberty = True
                         break
                 if not indirectLiberty:
+                    #print("2222222")
                     actions.remove(a)
-        return actions
+        '''
+        for a in list(actions):
+            i, j = a
+            # Check if the place already has a piece
+            if go.board[i][j] != 0:
+                go.visualize_board()
+                print(a, 'Invalid placement. There is already a chess in this position.')
+
+                actions.remove(a)
+                continue
+            
+            # Copy the board for testing
+            test_go = go.copy_board()
+            test_board = test_go.board
+
+            # Check if the place has liberty
+            test_board[i][j] = player
+            test_go.update_board(test_board)
+            if len(self.findLiberties(i, j, test_board)) <= 1:
+                actions.remove(a)
+                continue
+
+            # If not, remove the died pieces of opponent and check again
+            test_go.remove_died_pieces(3 - player)
+            if not test_go.find_liberty(i, j):
+                print('Invalid placement. No liberty found in this position.')
+                actions.remove(a)
+
+            # Check special case: repeat placement causing the repeat board state (KO rule)
+            else:
+                if go.died_pieces and go.compare_board(self.previous_board, test_go.board):
+                    print('Invalid placement. A repeat move not permitted by the KO rule.')
+                    actions.remove(a)
+        return actions #
+        '''
+        return actions #[a for a in actions if go.valid_place_check(a[0], a[1], player)]
 
     def findGroups(self, go):
         # {piece: groups [ (numLiberties, set(libertyPoints), set(groupMembers))]}
@@ -272,7 +323,9 @@ class AlphaBetaPlayer():
         player = self.pieceType if level == "min" else self.enemy
         a = action
         #if self.isValid(go, a, player):
-        goCopy = go.copy_board()
+        board = deepcopy(go.board)
+        goCopy = GO(5)
+        goCopy.board = board
         valid = goCopy.place_chess(a[0], a[1], player)
         goCopy.n_move += 1
         goCopy.remove_died_pieces(3 - player)
@@ -300,18 +353,20 @@ class AlphaBetaPlayer():
         return valid
 
     def gameOver(self, go, player):
-        for i in range(len(go.board)):
-            for j in range(len(go.board)):
-                if go.valid_place_check(i, j, player):
-                    return False
+        if any(go.valid_place_check(a // 5, a % 5, player) for a in range(25)):
+            return False
+        #for i in range(len(go.board)):
+        #    for j in range(len(go.board)):
+        #        if go.valid_place_check(i, j, player):
+        #            return False
         return True
         
     def score(self, go):
         # :param pieceType: 1('X')-Black or 2('O')-White.
-        score = {1: 0, 2: go.komi}
+        score = {1: 0, 2: go.komi} #14.75 w/o komi
         for row in range(len(go.board)):
             for col in range(len(go.board)):
-                player = self.checkPoint(go, row, col)
+                player = go.board[row][col] # #self.checkPoint(go, row, col)
                 if player:
                     score[player] += 1
         return score
@@ -323,13 +378,15 @@ class AlphaBetaPlayer():
         else:
             neighbors = go.detect_neighbor(i, j)
             # Neighbors order: top, bottom, left, right
-            if not any(go.board[x][y] == 0 for (x, y) in neighbors):
-                if all(go.board[x][y] == 1 for (x, y) in neighbors):
-                    point = 1
-                elif all(go.board[x][y] == 2 for (x, y) in neighbors):
-                    point = 2
-                else:
+            for (x, y) in neighbors:
+                if point != 0 and point != go.board[x][y]:
                     point = None
+                    break
+                elif go.board[x][y] and not point:
+                    point = go.board[x][y]
+                elif point and not go.board[x][y]:
+                    point = 0
+                    break
         return point
 
     def hasNoNeighbors(self, go, i, j):
@@ -342,50 +399,51 @@ class AlphaBetaPlayer():
         # turns not incrementing correctly
         # TODO: implement using go.board's n_move property
         #print(go.n_move)
+        enemy = 2 if player == 1 else 1
+        player = self.pieceType
         value = 500 - go.n_move
         if gameOver:
             score = self.score(go)
-            v = score[self.pieceType] - score[self.enemy]
+            v = score[player] - score[enemy]
             return value if v >= 0 else -1 * value 
 
         groups = self.findGroups(go)
         
-        #enemy = 2 if player == 1 else 1
-        
+
         # good chance of winning
         # if there is at least one enemy group with one or less liberties
-        if any(True for group in groups[self.enemy] if group[0] == 1):
+        if any(group[0] == 1 for group in groups[enemy]):
             # print("good chance winning", action, [group for group in groups[enemy] if group[0] <= 1])
             return value - stepCost
         # good chance of losing
         # if we have more than one group with one or less liberties
-        elif sum(1 for group in groups[self.pieceType] if group[0] <= 1) > 1:
+        elif sum(1 for group in groups[player] if group[0] <= 1) > 1:
             return -1 * (value - stepCost)
 
         # this could be returning a positive value when enemy is using heuristic
         # enemy heuristic winning means negative value
         # decent chance of winning
-        if self.twoGroupsTwoLibertiesWithOneSharedPoint(self.enemy, groups):
+        if self.twoGroupsTwoLibertiesWithOneSharedPoint(enemy, groups):
             return value / 2
-        sharedSelfPoints = self.twoGroupsTwoLibertiesWithOneSharedPoint(self.pieceType, groups)
+        sharedSelfPoints = self.twoGroupsTwoLibertiesWithOneSharedPoint(player, groups)
         # if enemy does not share any of these dangerous points, we decent chance of losing
-        if sharedSelfPoints and not any(selfPoint in group[1] for group in groups[self.enemy] for selfPoint in sharedSelfPoints):
+        if sharedSelfPoints and not any(selfPoint in group[1] for group in groups[enemy] for selfPoint in sharedSelfPoints):
             return -1 * value / 2
 
         # group score
-        enemyGroupsWith2Liberties = sum(group[0] == 2 for group in groups[self.enemy])
-        selfGroupsWith2Liberties = sum(group[0] == 2 for group in groups[self.pieceType])
+        enemyGroupsWith2Liberties = sum(group[0] == 2 for group in groups[enemy])
+        selfGroupsWith2Liberties = sum(group[0] == 2 for group in groups[player])
         groupScore = enemyGroupsWith2Liberties - selfGroupsWith2Liberties
 
         # liberty score
         selfLiberties = set()
         sharedSelfLiberties = 0
-        for group in groups[self.pieceType]:
+        for group in groups[player]:
             sharedSelfLiberties += len(selfLiberties & group[1])
             selfLiberties = selfLiberties | group[1]
         enemyLiberties = set()
         sharedEnemyLiberties = 0
-        for group in groups[self.enemy]:
+        for group in groups[enemy]:
             sharedEnemyLiberties += len(enemyLiberties & group[1])
             enemyLiberties = enemyLiberties | group[1]
         libertyScore = sharedEnemyLiberties - sharedSelfLiberties
@@ -428,8 +486,8 @@ if __name__ == "__main__":
     pieceType, previous_board, board = readInput(N)
     go = GO(N)
     go.set_board(pieceType, previous_board, board)
-    player = AlphaBetaPlayer(pieceType, maxDepth=3, maxActions=5) # TOs for 3,6
-    cProfile.run('action = player.get_input(go)')
-    #action = player.get_input(go)
+    player = AlphaBetaPlayer(pieceType, maxDepth=4, maxActions=3) # TOs for 3,6, NO tos 4,3 (29)
+    #cProfile.run('action = player.get_input(go)')
+    action = player.get_input(go)
     #print(action)
     writeOutput(action)
