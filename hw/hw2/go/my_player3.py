@@ -487,7 +487,7 @@ if __name__ == "__main__":
     pieceType, previous_board, board = readInput(N)
     go = GO(N)
     go.set_board(pieceType, previous_board, board)
-    player = AlphaBetaPlayer(pieceType, maxDepth=4, maxActions=3) # TOs for 3,6, NO tos 4,3 (29)
+    player = AlphaBetaPlayer(pieceType, maxDepth=5, maxActions=2) # 67 @ 5,2 no TOs
     #cProfile.run('action = player.get_input(go)')
     action = player.get_input(go)
     #print(action)
