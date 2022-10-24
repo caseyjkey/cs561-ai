@@ -402,10 +402,10 @@ class AlphaBetaPlayer():
         #print(go.n_move)
         enemy = 2 if player == 1 else 1
         player = self.pieceType
-        value = 500 - go.n_move
+        score = self.score(go)
+        v = score[player] - score[enemy]
+        value = 500 - go.n_move + v
         if gameOver:
-            score = self.score(go)
-            v = score[player] - score[enemy]
             return value if v >= 0 else -1 * value 
 
         groups = self.findGroups(go)
@@ -434,7 +434,7 @@ class AlphaBetaPlayer():
         # group score
         enemyGroupsWith2Liberties = sum(group[0] == 2 for group in groups[enemy])
         selfGroupsWith2Liberties = sum(group[0] == 2 for group in groups[player])
-        groupScore = enemyGroupsWith2Liberties - selfGroupsWith2Liberties
+        groupScore = -1 * enemyGroupsWith2Liberties + selfGroupsWith2Liberties
 
         # liberty score
         selfLiberties = set()
@@ -447,10 +447,10 @@ class AlphaBetaPlayer():
         for group in groups[enemy]:
             sharedEnemyLiberties += len(enemyLiberties & group[1])
             enemyLiberties = enemyLiberties | group[1]
-        libertyScore = sharedEnemyLiberties - sharedSelfLiberties
+        libertyScore = -1 * sharedEnemyLiberties + sharedSelfLiberties
 
         # return a randomly scaled score
-        total = groupScore * uniform(0, 1) + libertyScore * uniform(0, 1)
+        total = groupScore * uniform(0, 1) + libertyScore * uniform(0, 1) + v
         return total
 
     def findLiberties(self, i, j, board):
