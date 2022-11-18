@@ -413,12 +413,14 @@ class AlphaBetaPlayer():
 
         # good chance of winning
         # if there is at least one enemy group with one or less liberties
-        if any(group[0] == 1 for group in groups[enemy]):
-            # print("good chance winning", action, [group for group in groups[enemy] if group[0] <= 1])
-            return value - stepCost
+        for group in groups[enemy]:
+            i, j = list(group[1])[0]
+            if group[0] == 1 and not self.checkPoint(go, i, j) == enemy:
+                # print("good chance winning", action, [group for group in groups[enemy] if group[0] <= 1])
+                return value - stepCost
         # good chance of losing
-        # if we have more than one group with one or less liberties
-        elif sum(1 for group in groups[player] if group[0] <= 1) > 1:
+        # if we have more than one group with one or less liberties and isn't an eye
+        if sum(1 for group in groups[player] if group[0] == 1 and not self.checkPoint(go, list(group[1])[0][0], list(group[1])[0][1]) == player) > 1:
             return -1 * (value - stepCost)
 
         # this could be returning a positive value when enemy is using heuristic
